@@ -1,0 +1,23 @@
+# Build artifacts & working directories
+armbian-build/
+cache/
+output/
+.tmp/
+*.part
+
+# Disk images & archives
+*.img
+*.img.xz
+*.iso
+*.tar.gz
+*.sha256
+
+# Keys and credentials
+*.key
+*.pem
+factory_*
+device.json
+
+# OS specific
+.DS_Store
+Thumbs.db

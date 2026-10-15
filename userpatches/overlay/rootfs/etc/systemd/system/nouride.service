@@ -1,0 +1,61 @@
+[Unit]
+Description=Nouride multi-agent runtime
+Documentation=https://github.com/nouverse/nouride
+# Ordering only: Armbian's NetworkManager stack disables NetworkManager-wait-online, so this is not an
+# "online" gate. Deliberately no time-sync dependency: offline first boot would never start the daemon.
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=120
+
+[Service]
+Type=simple
+User=nouride
+Group=nouride
+WorkingDirectory=/srv/nouride
+ExecStartPre=-/bin/sh -c 'd="/srv/nouride"; p="$$d/.nouride-pending-update"; [ -f "$$p" ] || exit 0; n=$$(( $$(cat "$$p.attempts" 2>/dev/null || echo 0) + 1 )); echo "$$n" > "$$p.attempts"; [ "$$n" -le 3 ] && exit 0; for f in nouride dashboard skills wa-bridge frontend; do [ -e "$$d/.nouride-previous/$$f" ] || continue; rm -rf "$$d/$$f.failed"; [ -e "$$d/$$f" ] && mv "$$d/$$f" "$$d/$$f.failed"; mv "$$d/.nouride-previous/$$f" "$$d/$$f"; done; mv "$$p" "$$d/.nouride-rolled-back"; rm -f "$$p.attempts"; echo "nouride: the update did not come up; restored the previous version" >&2; exit 0'
+ExecStart=/srv/nouride/nouride start
+EnvironmentFile=-/srv/nouride/.env
+Environment=NOURIDE_SERVICE_KIND=systemd
+Environment=HOME=/srv/nouride/.nouride/home
+
+Restart=always
+RestartSec=5
+TimeoutStopSec=45
+KillSignal=SIGTERM
+KillMode=mixed
+
+# Relative to physical RAM (the installer computes 80% of the RAM it runs on, which in a chroot is the build
+# host). No MemoryMax, by design: the product throttles rather than kills.
+MemoryHigh=80%
+# Default is stop: one OOM-killed agent child would take every in-flight turn down with it.
+OOMPolicy=continue
+TasksMax=1024
+
+NoNewPrivileges=true
+TemporaryFileSystem=/tmp:size=268435456,mode=1777
+TemporaryFileSystem=/var/tmp:size=67108864,mode=1777
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/srv/nouride
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+LockPersonality=true
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+# Not MemoryDenyWriteExecute (the Bun runtime JIT-compiles) and not ProtectHostname (it freezes the
+# hostname the daemon sees at start, so a rename during onboarding would be invisible until restart).
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nouride
+
+[Install]
+WantedBy=multi-user.target

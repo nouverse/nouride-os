@@ -1,0 +1,11 @@
+# Sourced after Armbian's config/boards/aml-s9xx-box.tvb, so these assignments win.
+# Command-line params are applied before board files, so BOOT_FDT_FILE/SRC_CMDLINE can't be overridden from build.sh.
+
+# Armbian's line is 'rootflags=data=writeback ...': the least power-loss-safe ext4 mode, on boxes that get unplugged.
+SRC_CMDLINE='console=ttyAML0,115200n8 console=tty0 fsck.repair=yes'
+
+# The board defaults to the S905X reference DTB (meson-gxl-s905x-p212). S905X2 units need a g12a DTB;
+# customize-image.sh picks the matching chainloaded u-boot.ext from this FDT line.
+if [[ "${NOURIDE_AML_SOC:-s905x}" == "s905x2" ]]; then
+	BOOT_FDT_FILE="amlogic/meson-g12a-x96-max.dtb"
+fi
